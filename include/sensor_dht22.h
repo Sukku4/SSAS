@@ -1,10 +1,8 @@
 #ifndef SENSOR_DHT22_H
 #define SENSOR_DHT22_H
 
-#define DHTPIN 4
+void initDHT22();
+float getTemperature();
+float getHumidity();
 
-void setupDHT();
-float readTemperature();
-float readHumidity();
-
-#endif // SENSOR_DHT22_H
+#endif
