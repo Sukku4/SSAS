@@ -2,11 +2,11 @@
 #include <esp_sleep.h>
 
 void setupPowerManagement() {
-    // Configure deep sleep wake-up sources, e.g., timer, GPIO, etc.
+  Serial.println("Power management initialized");
 }
 
-void enterDeepSleep() {
-    // Enter deep sleep mode
-    esp_sleep_enable_timer_wakeup(10 * 1000000); // Wake up after 10 seconds
-    esp_deep_sleep_start();
+void enterDeepSleep(uint64_t timeInSeconds) {
+  Serial.printf("Entering deep sleep for %llu seconds...\n", timeInSeconds);
+  esp_sleep_enable_timer_wakeup(timeInSeconds * 1000000); // Convert to microseconds
+  esp_deep_sleep_start();
 }
