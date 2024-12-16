@@ -1,16 +1,19 @@
 #include "sensor_dht22.h"
 #include <DHT.h>
 
-DHT dht(DHTPIN, DHT22);
+#define DHT_PIN 4
+#define DHT_TYPE DHT22
 
-void setupDHT() {
+DHT dht(DHT_PIN, DHT_TYPE);
+
+void initDHT22() {
     dht.begin();
 }
 
-float readTemperature() {
+float getTemperature() {
     return dht.readTemperature();
 }
 
-float readHumidity() {
+float getHumidity() {
     return dht.readHumidity();
 }
