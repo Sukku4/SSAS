@@ -2,6 +2,6 @@
 #define POWER_MANAGEMENT_H
 
 void setupPowerManagement();
-void enterDeepSleep();
+void enterDeepSleep(uint64_t timeInSeconds);
 
-#endif // POWER_MANAGEMENT_H
+#endif
