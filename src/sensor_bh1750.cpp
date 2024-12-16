@@ -1,12 +1,14 @@
 #include "sensor_bh1750.h"
+#include <Wire.h>
 #include <BH1750.h>
 
-BH1750 lightMeter(0x23);
+BH1750 lightMeter;
 
-void setupBH1750() {
-    lightMeter.begin();
+void initBH1750() {
+    Wire.begin();
+    lightMeter.begin(BH1750::CONTINUOUS_HIGH_RES_MODE);
 }
 
-uint16_t readLightIntensity() {
+float getLightIntensity() {
     return lightMeter.readLightLevel();
 }
