@@ -27,16 +27,21 @@ TinyGPSPlus gps;
 WiFiClient espClient;
 PubSubClient client(espClient);
 
+// Function prototypes
+float readCO2();
+float readWindSpeed();
+String createCSVPayload(float temperature, float humidity, uint16_t lightIntensity, float co2, float windSpeed);
+
 void setup() {
     Serial.begin(115200);
     lightMeter.begin();
     dht.begin();
     mySerial.begin(9600);
     setupWiFi();
-    Serial.begin(115200);
     setupMQTT("broker.hivemq.com");
     setupPowerManagement();
     client.setServer(MQTT_SERVER, MQTT_PORT);
+
     // Task creation for FreeRTOS
     xTaskCreate(sensorTask, "Sensor Task", 2048, NULL, 1, NULL);
     xTaskCreate(powerManagementTask, "Power Management Task", 2048, NULL, 1, NULL);
@@ -47,14 +52,9 @@ void loop() {
         reconnect();
     }
     client.loop();
-     // Aggregate sensor data for batch transmission
-   String aggregatedData = aggregateSensorData();
-   publishData("SSAS/sensors", aggregatedData);
-
-  // Enter deep sleep to conserve power
-    enterDeepSleep(600); // Sleep for 10 minutes
 }
 
+// Sensor task for FreeRTOS
 void sensorTask(void *pvParameters) {
     while (true) {
         float temperature = dht.readTemperature();
@@ -63,31 +63,29 @@ void sensorTask(void *pvParameters) {
         float co2 = readCO2();
         float windSpeed = readWindSpeed();
 
-        String payload = createPayload(temperature, humidity, lightIntensity, co2, windSpeed);
-        sendToCloud(payload);
+        // Create a CSV payload
+        String payload = createCSVPayload(temperature, humidity, lightIntensity, co2, windSpeed);
+        publishData("SSAS/sensors", payload);
 
+        // Task delay (10 seconds)
         vTaskDelay(10000 / portTICK_PERIOD_MS);
     }
 }
 
+// Placeholder for CO2 sensor
 float readCO2() {
-    // Implement CO2 sensor reading
-    return 400.0; // Placeholder value
+    return 400.0; // Simulated value
 }
 
+// Placeholder for wind speed sensor
 float readWindSpeed() {
-    // Implement wind speed sensor reading
-    return 5.0; // Placeholder value
+    return 5.0; // Simulated value
 }
 
-String createPayload(float temperature, float humidity, uint16_t lightIntensity, float co2, float windSpeed) {
-    // Create JSON payload
-    String payload = "{";
-    payload += "\"temperature\":" + String(temperature) + ",";
-    payload += "\"humidity\":" + String(humidity) + ",";
-    payload += "\"lightIntensity\":" + String(lightIntensity) + ",";
-    payload += "\"co2\":" + String(co2) + ",";
-    payload += "\"windSpeed\":" + String(windSpeed);
-    payload += "}";
-    return payload;
+// Create CSV payload
+String createCSVPayload(float temperature, float humidity, uint16_t lightIntensity, float co2, float windSpeed) {
+    String csv = "timestamp,temperature,humidity,lightIntensity,co2,windSpeed\n";
+    csv += String(millis()) + "," + String(temperature) + "," + String(humidity) + "," +
+           String(lightIntensity) + "," + String(co2) + "," + String(windSpeed);
+    return csv;
 }
