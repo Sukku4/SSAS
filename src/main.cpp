@@ -33,6 +33,9 @@ void setup() {
     dht.begin();
     mySerial.begin(9600);
     setupWiFi();
+    Serial.begin(115200);
+    setupMQTT("broker.hivemq.com");
+    setupPowerManagement();
     client.setServer(MQTT_SERVER, MQTT_PORT);
     // Task creation for FreeRTOS
     xTaskCreate(sensorTask, "Sensor Task", 2048, NULL, 1, NULL);
@@ -44,6 +47,12 @@ void loop() {
         reconnect();
     }
     client.loop();
+     // Aggregate sensor data for batch transmission
+   String aggregatedData = aggregateSensorData();
+   publishData("SSAS/sensors", aggregatedData);
+
+  // Enter deep sleep to conserve power
+    enterDeepSleep(600); // Sleep for 10 minutes
 }
 
 void sensorTask(void *pvParameters) {
