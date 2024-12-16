@@ -1,82 +1,77 @@
 #include <WiFi.h>
-#include <PubSubClient.h>
-#include <AESLib.h>
+#include <PubSubClient.h> // MQTT Library
 
-// Wi-Fi credentials
+// Wi-Fi and MQTT Broker credentials
 const char* ssid = "Your_SSID";
 const char* password = "Your_PASSWORD";
+const char* mqtt_server = "broker.hivemq.com"; 
 
-// MQTT Broker details
-const char* mqtt_server = "mqtt.example.com";
-const int mqtt_port = 8883;
-const char* mqtt_user = "username";
-const char* mqtt_pass = "password";
-
-// AES Key (16 bytes)
-char aes_key[] = "1234567890abcdef";
-
-// Certificates (replace with actual CA, cert, and key)
-const char* root_ca = "-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----";
-const char* client_cert = "-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----";
-const char* private_key = "-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----";
-
-// Wi-Fi and MQTT Clients
-WiFiClientSecure espClient;
+WiFiClient espClient;
 PubSubClient client(espClient);
 
-// AESLib instance
-AESLib aesLib;
+// Sleep durations
+#define DEEP_SLEEP_DURATION 60000000ULL // 60 seconds in microseconds
+#define ACTIVE_MODE_DURATION 5000 // Active for 5 seconds
 
-// Encrypt function
-String encryptData(String plainText) {
-  char encrypted[64];
-  aesLib.encrypt((byte*)plainText.c_str(), (byte*)encrypted, aes_key);
-  return String(encrypted);
+// Function to connect to Wi-Fi
+void setupWiFi() {
+    if (WiFi.status() == WL_CONNECTED) return;
+    
+    Serial.print("Connecting to Wi-Fi");
+    WiFi.begin(ssid, password);
+    while (WiFi.status() != WL_CONNECTED) {
+        delay(500);
+        Serial.print(".");
+    }
+    Serial.println("Connected to Wi-Fi");
+}
+
+// Function to connect to the MQTT broker
+void reconnectMQTT() {
+    while (!client.connected()) {
+        Serial.print("Connecting to MQTT...");
+        if (client.connect("ESP32_Client")) {
+            Serial.println("Connected!");
+        } else {
+            Serial.print("Failed, rc=");
+            Serial.print(client.state());
+            delay(2000);
+        }
+    }
+}
+
+// Function to publish data to MQTT broker
+void publishSensorData(String sensorData) {
+    if (!client.connected()) reconnectMQTT();
+    client.publish("SSAS/SensorData", sensorData.c_str());
+    Serial.println("Data sent: " + sensorData);
+}
+
+// Optimized communication protocol logic
+void sendData() {
+    // Collect sensor data (dummy example)
+    String sensorData = "{\"temp\":24.5,\"humidity\":60,\"soil_moisture\":30}";
+    
+    // Publish data to MQTT broker
+    publishSensorData(sensorData);
+    
+    // Disconnect Wi-Fi after sending data to save power
+    WiFi.disconnect(true);
+    WiFi.mode(WIFI_OFF);
+    Serial.println("Wi-Fi turned off to save power.");
 }
 
 void setup() {
-  Serial.begin(115200);
-
-  // Connect to Wi-Fi
-  WiFi.begin(ssid, password);
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(1000);
-    Serial.println("Connecting to WiFi...");
-  }
-  Serial.println("Connected to WiFi");
-
-  // Set certificates
-  espClient.setCACert(root_ca);
-  espClient.setCertificate(client_cert);
-  espClient.setPrivateKey(private_key);
-
-  // Set MQTT server
-  client.setServer(mqtt_server, mqtt_port);
+    Serial.begin(115200);
+    setupWiFi();
+    client.setServer(mqtt_server, 1883);
+    sendData();  // Send data immediately upon waking up
+    
+    // Enter deep sleep after sending data
+    Serial.println("Entering deep sleep...");
+    esp_deep_sleep_start();
 }
 
 void loop() {
-  if (!client.connected()) {
-    reconnectMQTT();
-  }
-  client.loop();
-
-  // Example sensor data
-  String sensorData = "temperature=25.3,humidity=60.2,soilMoisture=45";
-  String encryptedData = encryptData(sensorData);
-
-  // Publish encrypted data
-  client.publish("SSAS/sensors", encryptedData.c_str());
-  delay(5000); // Transmit every 5 seconds
+    // Keep the loop empty as the system wakes up from deep sleep for operations
 }
-
-void reconnectMQTT() {
-  while (!client.connected()) {
-    Serial.println("Connecting to MQTT...");
-    if (client.connect("ESP32Client", mqtt_user, mqtt_pass)) {
-      Serial.println("Connected to MQTT broker with TLS");
-    } else {
-      delay(5000);
-    }
-  }
-}
-
