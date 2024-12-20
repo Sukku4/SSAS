@@ -28,8 +28,8 @@
 #define INTERRUPT_PIN 2
 
 // Set Points
-const float targetTemperature = 25.0; // °C
-const float targetHumidity = 60.0;    // %
+float targetTemperature = 25.0; // °C
+float targetHumidity = 60.0;    // %
 
 BH1750 lightMeter(0x23);
 DHT dht(DHTPIN, DHT22);
@@ -49,6 +49,7 @@ float readWindSpeed();
 String createCSVPayload(float temperature, float humidity, uint16_t lightIntensity, float co2, float windSpeed);
 void sensorTask(void *pvParameters);
 void controlTask(void *pvParameters);
+void feedbackTask(void *pvParameters);
 
 void setup() {
     Serial.begin(115200);
@@ -76,6 +77,7 @@ void setup() {
     // Create FreeRTOS tasks
     xTaskCreate(sensorTask, "Sensor Task", 4096, NULL, 1, NULL);
     xTaskCreate(controlTask, "Control Task", 4096, NULL, 1, NULL);
+    xTaskCreate(feedbackTask, "Feedback Task", 2048, NULL, 1, NULL);
     xTaskCreate(powerManagementTask, "Power Management Task", 2048, NULL, 1, NULL);
 }
 
@@ -141,6 +143,34 @@ void controlTask(void *pvParameters) {
 
         // Delay for control loop
         vTaskDelay(2000 / portTICK_PERIOD_MS);
+    }
+}
+
+// Feedback task for dynamic set point adjustment
+void feedbackTask(void *pvParameters) {
+    while (true) {
+        float currentTemperature = dht.readTemperature();
+        float currentHumidity = dht.readHumidity();
+
+        // Adjust set points dynamically based on feedback
+        if (currentTemperature > targetTemperature + 2) {
+            targetTemperature -= 0.5; // Gradually lower the set point
+        } else if (currentTemperature < targetTemperature - 2) {
+            targetTemperature += 0.5; // Gradually increase the set point
+        }
+
+        if (currentHumidity > targetHumidity + 5) {
+            targetHumidity -= 1.0;
+        } else if (currentHumidity < targetHumidity - 5) {
+            targetHumidity += 1.0;
+        }
+
+        Serial.print("Adjusted Target Temperature: ");
+        Serial.println(targetTemperature);
+        Serial.print("Adjusted Target Humidity: ");
+        Serial.println(targetHumidity);
+
+        vTaskDelay(5000 / portTICK_PERIOD_MS); // Feedback check every 5 seconds
     }
 }
 
