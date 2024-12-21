@@ -50,6 +50,7 @@ String createCSVPayload(float temperature, float humidity, uint16_t lightIntensi
 void sensorTask(void *pvParameters);
 void controlTask(void *pvParameters);
 void feedbackTask(void *pvParameters);
+void makeDecisions(float temperature, float humidity, float lightIntensity, float co2, float windSpeed);
 
 void setup() {
     Serial.begin(115200);
@@ -172,6 +173,36 @@ void feedbackTask(void *pvParameters) {
 
         vTaskDelay(5000 / portTICK_PERIOD_MS); // Feedback check every 5 seconds
     }
+}
+
+// Decision-making function for actuator control
+void makeDecisions(float temperature, float humidity, float lightIntensity, float co2, float windSpeed) {
+    // Temperature Control
+    if (temperature > 30.0) {
+        digitalWrite(FAN_PIN, HIGH);    // Activate fan
+        digitalWrite(HEATER_PIN, LOW); // Deactivate heater
+    } else if (temperature < 20.0) {
+        digitalWrite(FAN_PIN, LOW);    // Deactivate fan
+        digitalWrite(HEATER_PIN, HIGH); // Activate heater
+    } else {
+        digitalWrite(FAN_PIN, LOW);
+        digitalWrite(HEATER_PIN, LOW);
+    }
+
+    // Humidity Control
+    if (humidity < 50.0) {
+        digitalWrite(HUMIDIFIER_PIN, HIGH); // Activate humidifier
+    } else if (humidity > 70.0) {
+        digitalWrite(HUMIDIFIER_PIN, LOW); // Deactivate humidifier
+    }
+
+    // Optional: Log Decisions
+    Serial.print("Fan: ");
+    Serial.println(digitalRead(FAN_PIN) == HIGH ? "ON" : "OFF");
+    Serial.print("Heater: ");
+    Serial.println(digitalRead(HEATER_PIN) == HIGH ? "ON" : "OFF");
+    Serial.print("Humidifier: ");
+    Serial.println(digitalRead(HUMIDIFIER_PIN) == HIGH ? "ON" : "OFF");
 }
 
 // Placeholder for CO2 sensor
